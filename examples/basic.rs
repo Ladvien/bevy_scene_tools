@@ -1,6 +1,6 @@
 use bevy::{prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
-use bevy_scene_tools::SceneToolsPlugin;
+use bevy_scene_tools::{Marker, SceneToolsPlugin};
 
 pub const SCREEN_WIDTH: f32 = 720.0;
 pub const SCREEN_HEIGHT: f32 = 640.0;
@@ -76,6 +76,7 @@ fn setup(
             },
             ..default()
         },))
+        .insert(Marker)
         .id();
 
     commands
