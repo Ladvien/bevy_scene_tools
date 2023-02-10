@@ -40,22 +40,10 @@ fn add_scene_nodes(
     existing_meshes: Query<(Entity, &Aabb), (With<Handle<Mesh>>, Without<Marker>)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    transforms: Query<&Transform>,
+    global_transforms: Query<&GlobalTransform>,
 ) -> () {
     for scene in scenes.iter() {
         let mut scene_nodes: HashMap<Entity, SceneNode> = HashMap::new();
-
-        if let Ok(transform) = transforms.get(scene) {
-            // TODO: Load all scene node items from query.
-            scene_nodes.insert(
-                scene,
-                SceneNode {
-                    position: transform.translation,
-                    aabb: None,
-                    mesh_handle: None,
-                },
-            );
-        }
 
         get_all_meshes_from_children(
             &mut commands,
@@ -63,7 +51,7 @@ fn add_scene_nodes(
             &children,
             &existing_meshes,
             &mut scene_nodes,
-            &transforms,
+            &global_transforms,
         );
         println!("Scene AABBs: {:#?}", scene_nodes);
 
@@ -113,18 +101,10 @@ fn get_all_meshes_from_children<'a>(
     children: &Query<&Children>,
     meshes: &Query<(Entity, &Aabb), (With<Handle<Mesh>>, Without<Marker>)>,
     mut scene_nodes: &'a mut HashMap<Entity, SceneNode>,
-    transforms: &Query<&Transform>,
+    global_transforms: &Query<&GlobalTransform>,
 ) -> &'a mut HashMap<Entity, SceneNode> {
     if let Ok(_children) = children.get(entity) {
         for child in _children {
-            if let Ok(transform) = transforms.get(*child) {
-                let mut node = SceneNode::from(transform.translation);
-                if let Ok((mesh, aabb)) = meshes.get(*child) {
-                    println!("{:#?}", aabb);
-                    node.aabb = Some(aabb.to_owned());
-                }
-            }
-
             commands.entity(*child).insert(Marker);
             scene_nodes = get_all_meshes_from_children(
                 commands,
@@ -132,7 +112,7 @@ fn get_all_meshes_from_children<'a>(
                 &children,
                 &meshes,
                 scene_nodes,
-                transforms,
+                global_transforms,
             );
         }
     }
