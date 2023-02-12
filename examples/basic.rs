@@ -1,6 +1,8 @@
-use bevy::{prelude::*, window::PresentMode};
+use std::default;
+
+use bevy::{asset::LoadState, prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
-use bevy_scene_tools::{Marker, SceneToolsPlugin};
+use bevy_scene_tools::{AssetsLoading, Marker, SceneToolsPlugin};
 
 pub const SCREEN_WIDTH: f32 = 720.0;
 pub const SCREEN_HEIGHT: f32 = 640.0;
@@ -56,6 +58,7 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut loading: ResMut<AssetsLoading>,
 ) {
     commands.spawn(PointLightBundle {
         transform: Transform::from_xyz(0., 5.0, 0.),
@@ -66,9 +69,10 @@ fn setup(
         ..default()
     });
 
+    let scene: Handle<Scene> = asset_server.load("two_cubes.glb#Scene0");
     let entity_id = commands
         .spawn((SceneBundle {
-            scene: asset_server.load("two_cubes.glb#Scene0"),
+            scene: scene.clone(),
             transform: Transform {
                 translation: Vec3::ZERO,
                 scale: Vec3::splat(1.0),
@@ -82,6 +86,8 @@ fn setup(
     commands
         .entity(entity_id)
         .insert(Name::new(format!("cube-{:?}", entity_id)));
+
+    loading.0.push(scene.clone_untyped());
 }
 
 fn camera_controls(
