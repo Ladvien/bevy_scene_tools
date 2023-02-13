@@ -2,7 +2,7 @@ use std::default;
 
 use bevy::{asset::LoadState, prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
-use bevy_scene_tools::{AssetsLoading, Marker, SceneToolsPlugin};
+use bevy_scene_tools::{Marker, SceneToolsPlugin};
 
 pub const SCREEN_WIDTH: f32 = 720.0;
 pub const SCREEN_HEIGHT: f32 = 640.0;
@@ -32,9 +32,9 @@ fn main() {
             },
             ..default()
         }))
-        .add_startup_system(setup)
         .add_plugin(WorldInspectorPlugin::new())
         .add_system(bevy::window::close_on_esc)
+        .add_startup_system(setup)
         .add_system(camera_controls)
         .run();
 }
@@ -58,7 +58,6 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut loading: ResMut<AssetsLoading>,
 ) {
     commands.spawn(PointLightBundle {
         transform: Transform::from_xyz(0., 5.0, 0.),
@@ -74,20 +73,18 @@ fn setup(
         .spawn((SceneBundle {
             scene: scene.clone(),
             transform: Transform {
-                translation: Vec3::ZERO,
+                translation: Vec3::new(1.5, 0.0, -1.6),
                 scale: Vec3::splat(1.0),
                 ..Default::default()
             },
             ..default()
         },))
-        .insert(Marker)
+        // .insert(Marker)
         .id();
 
     commands
         .entity(entity_id)
         .insert(Name::new(format!("cube-{:?}", entity_id)));
-
-    loading.0.push(scene.clone_untyped());
 }
 
 fn camera_controls(

@@ -19,38 +19,15 @@ pub struct SceneNode {
     pub aabb: Aabb,
 }
 
-impl SceneNode {
-    fn new(global_position: Vec3, aabb: Aabb) -> Self {
-        Self {
-            global_position,
-            aabb,
-        }
-    }
-}
-
 impl Plugin for SceneToolsPlugin {
     fn build(&self, app: &mut App) {
-        let app = app
-            .init_resource::<AssetsLoading>()
-            .add_state(AssetsState::Loading)
-            .add_system_set(
-                SystemSet::on_update(AssetsState::AllLoaded).with_system(add_scene_nodes),
-            )
-            .add_system_set(
-                SystemSet::on_update(AssetsState::Loading).with_system(check_assets_ready),
-            );
+        let app = app.add_system_to_stage(CoreStage::Last, add_scene_nodes);
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum AssetsState {
-    Loading,
-    AllLoaded,
 }
 
 fn add_scene_nodes(
     mut commands: Commands,
-    scenes: Query<Entity, (With<Handle<Scene>>, Without<AabbParsed>)>,
+    scenes: Query<Entity, (With<Handle<Scene>>, Without<AabbParsed>, Without<Marker>)>,
     children: Query<&Children>,
     existing_meshes: Query<(Entity, &Aabb), (With<Handle<Mesh>>, Without<Marker>)>,
     mut aabbs: ResMut<Assets<Mesh>>,
@@ -60,6 +37,14 @@ fn add_scene_nodes(
     for scene in scenes.iter() {
         let mut scene_nodes: HashMap<Entity, SceneNode> = HashMap::new();
         // println!("Parsing scene: {:?}", scene);
+
+        let scene_center = match global_transforms.get(scene) {
+            Ok(global_transform) => global_transform.translation(),
+            Err(_) => return (),
+        };
+
+        println!("scene_center: {:?}", scene_center);
+
         get_all_meshes_from_children(
             &mut commands,
             scene,
@@ -106,6 +91,7 @@ fn add_scene_nodes(
             //             })
             //             .insert(Name::from("debug-cube"));
             //     }
+            commands.entity(scene).insert(Marker);
         }
     }
 }
@@ -121,7 +107,7 @@ fn get_all_meshes_from_children<'a>(
     if let Ok(_children) = children.get(entity) {
         for child in _children {
             // println!("Child {:?}", child);
-            // commands.entity(*child).insert(Marker);
+            commands.entity(*child).insert(Marker);
 
             match get_scene_node(*child, aabbs, global_transforms) {
                 Ok(scene_node) => scene_nodes.insert(*child, scene_node),
@@ -163,34 +149,5 @@ fn box_mesh_from_aabb(aabb: &Aabb) -> shape::Box {
         max_y: aabb.center.y + aabb.half_extents.y,
         min_z: aabb.center.z - aabb.half_extents.z,
         max_z: aabb.center.z + aabb.half_extents.z,
-    }
-}
-
-#[derive(Resource)]
-pub struct AssetsLoading(pub Vec<HandleUntyped>);
-
-impl Default for AssetsLoading {
-    fn default() -> Self {
-        AssetsLoading(vec![])
-    }
-}
-
-fn check_assets_ready(
-    mut commands: Commands,
-    server: Res<AssetServer>,
-    loading: Res<AssetsLoading>,
-    mut assets_load_state: ResMut<State<AssetsState>>,
-) {
-    match server.get_group_load_state(loading.0.iter().map(|h| h.id)) {
-        LoadState::Failed => {
-            println!("Uh-oh");
-        }
-        LoadState::Loaded => {
-            println!("Loaded all scenes.");
-            assets_load_state.push(AssetsState::AllLoaded).unwrap();
-        }
-        _ => {
-            println!("Not fully loaded yet.");
-        }
     }
 }
