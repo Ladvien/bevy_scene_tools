@@ -30,12 +30,22 @@ fn add_scene_aabbs(
 ) -> () {
     for scene in scenes.iter() {
         let mut scene_aabbs: HashMap<Entity, Aabb> = HashMap::new();
-        // println!("Parsing scene: {:?}", scene);
 
         let scene_center = match global_transforms.get(scene) {
             Ok(global_transform) => global_transform.translation(),
             Err(_) => return (),
         };
+
+        // commands.spawn(PbrBundle {
+        //     mesh: meshes.add(Mesh::from(shape::UVSphere {
+        //         ..Default::default()
+        //     })),
+        //     transform: Transform {
+        //         translation: scene_center,
+        //         ..Default::default()
+        //     },
+        //     ..Default::default()
+        // });
 
         println!("scene_center: {:?}", scene_center);
 
@@ -49,39 +59,40 @@ fn add_scene_aabbs(
             &global_transforms,
         );
 
-        // # TODO: For testing, replace with a proper flag to ensure
-        // scene is completely loaded before parsing.
+        let scene_aabb = Aabb {
+            center: Vec3A::from(scene_center),
+            half_extents: Vec3A::from(get_max_half_extents(&scene_aabbs)),
+        };
+
         if !scene_aabbs.is_empty() {
             println!("Scene AABBs: {:#?}", scene_aabbs);
-                commands.entity(scene).insert(AabbParsed);
-                for scene_aabb in scene_aabbs.into_values() {
-
-                    commands
-                        .spawn(PbrBundle {
-                            mesh: meshes.add(Mesh::from(box_mesh_from_aabb(&scene_aabb))),
-                            transform: Transform {
-                                translation: Vec3::from(scene_aabb.center),
-                                ..Default::default()
-                            },
-                            material: materials.add(StandardMaterial {
-                                base_color: Color::Rgba {
-                                    red: 1.0,
-                                    green: 0.0,
-                                    blue: 0.0,
-                                    alpha: 0.5,
-                                },
-                                emissive: Color::Rgba {
-                                    red: 1.0,
-                                    green: 0.0,
-                                    blue: 0.0,
-                                    alpha: 0.5,
-                                },
-                                ..Default::default()
-                            }),
-                            ..Default::default()
-                        })
-                        .insert(Name::from("debug-cube"));
-                }
+            commands.entity(scene).insert(AabbParsed);
+            commands
+                .spawn(PbrBundle {
+                    mesh: meshes.add(Mesh::from(box_mesh_from_aabb(&scene_aabb))),
+                    transform: Transform {
+                        translation: Vec3::from(scene_aabb.center),
+                        ..Default::default()
+                    },
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::Rgba {
+                            red: 1.0,
+                            green: 0.0,
+                            blue: 0.0,
+                            alpha: 0.5,
+                        },
+                        emissive: Color::Rgba {
+                            red: 1.0,
+                            green: 0.0,
+                            blue: 0.0,
+                            alpha: 0.5,
+                        },
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .insert(Name::from("debug-cube"));
+            // }
             commands.entity(scene).insert(Marker);
         }
     }
@@ -127,13 +138,22 @@ fn get_scene_aabb(
     global_transforms: &Query<&GlobalTransform>,
 ) -> Result<Aabb, QueryEntityError> {
     let global_transform = global_transforms.get(entity)?;
-    let (entity, aabb) = aabbs.get(entity)?;
+    let (_, aabb) = aabbs.get(entity)?;
 
-    let scene_half_extents = scene_center + (Vec3::from(aabb.center) + Vec3::from(aabb.half_extents));
+    // Cube #1
+    //  global_transform:       (1.135, 0.732, -1.675)
+    //  half_extents:           (1.0, 1.0, 1.0)
+    //  scene_center:           (1.5, 0.0, -1.6)
+    // SceneAabb:
+    //  center:                 (2.134, 1.732, 0.675)
+
     println!("scene_center: {:?}", scene_center);
+    println!("half_extents: {:?}", aabb.half_extents);
     println!("global_transform: {:?}", global_transform.translation());
+
+    let scene_half_extents = Vec3::from(aabb.center) + Vec3::from(aabb.half_extents);
     Ok(Aabb {
-        center: Vec3A::from(scene_center),
+        center: aabb.center,
         half_extents: Vec3A::from(scene_half_extents),
     })
 }
@@ -147,4 +167,17 @@ fn box_mesh_from_aabb(aabb: &Aabb) -> shape::Box {
         min_z: aabb.center.z - aabb.half_extents.z,
         max_z: aabb.center.z + aabb.half_extents.z,
     }
+}
+
+fn get_max_half_extents(aabbs: &HashMap<Entity, Aabb>) -> Vec3 {
+    let mut x_max_extent: f32 = 0.0;
+    let mut y_max_extent: f32 = 0.0;
+    let mut z_max_extent: f32 = 0.0;
+    for aabb in aabbs.clone().into_values() {
+        x_max_extent = x_max_extent.max(aabb.half_extents.x);
+        y_max_extent = y_max_extent.max(aabb.half_extents.y);
+        z_max_extent = z_max_extent.max(aabb.half_extents.z);
+    }
+
+    Vec3::new(x_max_extent, y_max_extent, z_max_extent)
 }

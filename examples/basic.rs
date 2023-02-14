@@ -68,7 +68,8 @@ fn setup(
         ..default()
     });
 
-    let scene: Handle<Scene> = asset_server.load("two_cubes.glb#Scene0");
+    // let scene: Handle<Scene> = asset_server.load("two_cubes.glb#Scene0");
+    let scene: Handle<Scene> = asset_server.load("ship.gltf#Scene0");
     let entity_id = commands
         .spawn((SceneBundle {
             scene: scene.clone(),
