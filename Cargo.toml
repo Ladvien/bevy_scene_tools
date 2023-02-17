@@ -14,6 +14,7 @@ version = "0.0.1"
 [dependencies]
 bevy = {version = "0.9", features = ["dynamic"]}
 bevy_mod_raycast = "0.7.0"
+display-info = "0.4.1"
 
 [dev-dependencies]
 bevy-inspector-egui = "0.14.0"

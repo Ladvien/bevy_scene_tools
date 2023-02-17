@@ -1,8 +1,8 @@
-use std::default;
-
 use bevy::{asset::LoadState, prelude::*, window::PresentMode};
 use bevy_inspector_egui::WorldInspectorPlugin;
 use bevy_scene_tools::{Marker, SceneToolsPlugin};
+use display_info::DisplayInfo;
+use std::default;
 
 pub const SCREEN_WIDTH: f32 = 720.0;
 pub const SCREEN_HEIGHT: f32 = 640.0;
@@ -18,16 +18,21 @@ pub const CAM_ORIGIN_Y: f32 = 15.0;
 pub const CAM_ORIGIN_Z: f32 = 15.0;
 
 fn main() {
+    let screen_size = get_window_size().unwrap();
+    let window_pos_x = (screen_size.0 as f32 * 0.66667) as f32;
+    let window_pos_y = 0.0;
+    let screen_size = screen_size.0 as f32 - window_pos_x;
+
     App::new()
         .add_plugin(SceneToolsPlugin)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
-                width: SCREEN_WIDTH,
-                height: SCREEN_HEIGHT,
+                width: screen_size,
+                height: screen_size,
                 title: GAME_TITLE.to_string(),
                 resizable: false,
                 present_mode: PresentMode::AutoVsync,
-                position: WindowPosition::At(Vec2::new(START_X_POX, START_Y_POX)),
+                position: WindowPosition::At(Vec2::new(window_pos_x, window_pos_y)),
                 ..Default::default()
             },
             ..default()
@@ -36,6 +41,7 @@ fn main() {
         .add_system(bevy::window::close_on_esc)
         .add_startup_system(setup)
         .add_system(camera_controls)
+        // .add_system(window_resize_system)
         .run();
 }
 
@@ -53,6 +59,18 @@ pub struct Mechanics {
     pub rotate_cooldown: Timer,
 }
 
+fn get_window_size() -> Result<(i32, i32), ()> {
+    let display_infos = DisplayInfo::all().unwrap();
+    let primary_displays = display_infos
+        .iter()
+        .filter(|d| d.is_primary)
+        .collect::<Vec<&DisplayInfo>>();
+    if let Some(primary_display) = primary_displays.first() {
+        return Ok((primary_display.width as i32, primary_display.height as i32));
+    }
+    return Err(());
+}
+
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -68,13 +86,16 @@ fn setup(
         ..default()
     });
 
+    const SCENE_CENTER: Vec3 = Vec3::new(1.5, 0.0, -1.6);
+
+    let scene: Handle<Scene> = asset_server.load("one_cube.glb#Scene0");
     // let scene: Handle<Scene> = asset_server.load("two_cubes.glb#Scene0");
-    let scene: Handle<Scene> = asset_server.load("ship.gltf#Scene0");
+    // let scene: Handle<Scene> = asset_server.load("ship.gltf#Scene0");
     let entity_id = commands
         .spawn((SceneBundle {
             scene: scene.clone(),
             transform: Transform {
-                translation: Vec3::new(1.5, 0.0, -1.6),
+                translation: SCENE_CENTER,
                 scale: Vec3::splat(1.0),
                 ..Default::default()
             },
@@ -86,6 +107,25 @@ fn setup(
     commands
         .entity(entity_id)
         .insert(Name::new(format!("cube-{:?}", entity_id)));
+
+    // commands
+    //     .spawn(PbrBundle {
+    //         mesh: meshes.add(Mesh::from(shape::Icosphere {
+    //             radius: 1.25,
+    //             ..Default::default()
+    //         })),
+    //         transform: Transform {
+    //             // translation: Vec3::from(scene_aabb.center)
+    //             translation: SCENE_CENTER,
+    //             ..Default::default()
+    //         },
+    //         material: materials.add(StandardMaterial {
+    //             base_color: Color::GREEN,
+    //             ..Default::default()
+    //         }),
+    //         ..Default::default()
+    //     })
+    //     .insert(Name::from("center-sphere"));
 }
 
 fn camera_controls(

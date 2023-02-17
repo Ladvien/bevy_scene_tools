@@ -61,17 +61,19 @@ fn add_scene_aabbs(
 
         let scene_aabb = Aabb {
             center: Vec3A::from(scene_center),
-            half_extents: Vec3A::from(get_max_half_extents(&scene_aabbs)),
+            half_extents: Vec3A::from(get_max_half_extents(&scene_aabbs, scene_center)),
         };
 
         if !scene_aabbs.is_empty() {
-            println!("Scene AABBs: {:#?}", scene_aabbs);
+            // println!("Scene AABBs: {:#?}", scene_aabbs);
+            // println!("Scene AABB: {:#?}", scene_aabb);
             commands.entity(scene).insert(AabbParsed);
             commands
                 .spawn(PbrBundle {
                     mesh: meshes.add(Mesh::from(box_mesh_from_aabb(&scene_aabb))),
                     transform: Transform {
                         translation: Vec3::from(scene_aabb.center),
+                        // translation: Vec3::ZERO,
                         ..Default::default()
                     },
                     material: materials.add(StandardMaterial {
@@ -79,14 +81,9 @@ fn add_scene_aabbs(
                             red: 1.0,
                             green: 0.0,
                             blue: 0.0,
-                            alpha: 0.5,
+                            alpha: 0.2,
                         },
-                        emissive: Color::Rgba {
-                            red: 1.0,
-                            green: 0.0,
-                            blue: 0.0,
-                            alpha: 0.5,
-                        },
+                        alpha_mode: AlphaMode::Blend,
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -112,8 +109,11 @@ fn get_all_meshes_from_children<'a>(
             // println!("Child {:?}", child);
             commands.entity(*child).insert(Marker);
 
-            match get_scene_aabb(scene_center, *child, aabbs, global_transforms) {
-                Ok(scene_aabb) => scene_aabbs.insert(*child, scene_aabb),
+            match get_scene_aabb(&scene_center, *child, aabbs, global_transforms) {
+                Ok(scene_aabb) => {
+                    println!("{:#?}", scene_aabb);
+                    scene_aabbs.insert(*child, scene_aabb)
+                }
                 Err(_) => None,
             };
 
@@ -132,12 +132,12 @@ fn get_all_meshes_from_children<'a>(
 }
 
 fn get_scene_aabb(
-    scene_center: Vec3,
+    scene_center: &Vec3,
     entity: Entity,
     aabbs: &Query<(Entity, &Aabb), (With<Handle<Mesh>>, Without<Marker>)>,
     global_transforms: &Query<&GlobalTransform>,
 ) -> Result<Aabb, QueryEntityError> {
-    let global_transform = global_transforms.get(entity)?;
+    let mesh_global_pos = global_transforms.get(entity)?.translation();
     let (_, aabb) = aabbs.get(entity)?;
 
     // Cube #1
@@ -147,13 +147,20 @@ fn get_scene_aabb(
     // SceneAabb:
     //  center:                 (2.134, 1.732, 0.675)
 
-    println!("scene_center: {:?}", scene_center);
-    println!("half_extents: {:?}", aabb.half_extents);
-    println!("global_transform: {:?}", global_transform.translation());
+    // println!("scene_center: {:?}", scene_center);
+    let scene_half_extents = mesh_global_pos.abs() - scene_center.clone().abs()
+        + Vec3::from(aabb.center)
+        + Vec3::from(aabb.half_extents);
+    println!("################################################################");
+    println!("g: {:?}", mesh_global_pos);
+    println!("h: {:?}", Vec3::from(aabb.half_extents));
+    println!("n: {:?}", scene_half_extents);
+    println!("c: {:?}", scene_center);
+    println!("################################################################");
 
-    let scene_half_extents = Vec3::from(aabb.center) + Vec3::from(aabb.half_extents);
     Ok(Aabb {
-        center: aabb.center,
+        // center: Vec3A::from(*scene_center),
+        center: Vec3A::from(scene_center.clone()),
         half_extents: Vec3A::from(scene_half_extents),
     })
 }
@@ -169,7 +176,7 @@ fn box_mesh_from_aabb(aabb: &Aabb) -> shape::Box {
     }
 }
 
-fn get_max_half_extents(aabbs: &HashMap<Entity, Aabb>) -> Vec3 {
+fn get_max_half_extents(aabbs: &HashMap<Entity, Aabb>, pos: Vec3) -> Vec3 {
     let mut x_max_extent: f32 = 0.0;
     let mut y_max_extent: f32 = 0.0;
     let mut z_max_extent: f32 = 0.0;
@@ -179,5 +186,7 @@ fn get_max_half_extents(aabbs: &HashMap<Entity, Aabb>) -> Vec3 {
         z_max_extent = z_max_extent.max(aabb.half_extents.z);
     }
 
-    Vec3::new(x_max_extent, y_max_extent, z_max_extent)
+    let t = Vec3::new(x_max_extent, y_max_extent, z_max_extent);
+    println!("t: {:#}", t);
+    t
 }
