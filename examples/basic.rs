@@ -107,25 +107,6 @@ fn setup(
     commands
         .entity(entity_id)
         .insert(Name::new(format!("cube-{:?}", entity_id)));
-
-    // commands
-    //     .spawn(PbrBundle {
-    //         mesh: meshes.add(Mesh::from(shape::Icosphere {
-    //             radius: 1.25,
-    //             ..Default::default()
-    //         })),
-    //         transform: Transform {
-    //             // translation: Vec3::from(scene_aabb.center)
-    //             translation: SCENE_CENTER,
-    //             ..Default::default()
-    //         },
-    //         material: materials.add(StandardMaterial {
-    //             base_color: Color::GREEN,
-    //             ..Default::default()
-    //         }),
-    //         ..Default::default()
-    //     })
-    //     .insert(Name::from("center-sphere"));
 }
 
 fn camera_controls(
